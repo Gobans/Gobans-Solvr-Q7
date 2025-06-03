@@ -1,7 +1,7 @@
 Period Type,Period,Release Count
 yearly,2021,4
 yearly,2022,19
-yearly,2023,30
+yearly,2023,28
 yearly,2024,1
 yearly,2025,275
 monthly,2021-10,4
@@ -11,7 +11,7 @@ monthly,2022-11,12
 monthly,2022-12,5
 monthly,2023-01,2
 monthly,2023-02,16
-monthly,2023-03,4
+monthly,2023-03,2
 monthly,2023-04,4
 monthly,2023-05,1
 monthly,2023-07,3
@@ -32,7 +32,7 @@ weekly,2023-W03,2
 weekly,2023-W06,6
 weekly,2023-W07,5
 weekly,2023-W08,5
-weekly,2023-W10,4
+weekly,2023-W10,2
 weekly,2023-W15,1
 weekly,2023-W16,2
 weekly,2023-W17,1
@@ -74,7 +74,6 @@ daily,2023-02-21,1
 daily,2023-02-23,1
 daily,2023-03-09,1
 daily,2023-03-10,1
-daily,2023-03-11,2
 daily,2023-04-14,1
 daily,2023-04-19,2
 daily,2023-04-25,1
