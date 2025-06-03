@@ -206,7 +206,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 시간대별 및 파이 차트 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* 시간대별 릴리즈 */}
         <div className="bg-white p-6 rounded-xl shadow-lg border">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">시간대별 릴리즈</h2>
@@ -217,20 +217,6 @@ export default function DashboardPage() {
               <YAxis />
               <Tooltip />
               <Bar dataKey="releases" fill={COLORS.info} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 브랜치별 릴리즈 */}
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">브랜치별 릴리즈</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={branchData.slice(0, 5)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="releases" fill={COLORS.purple} />
             </BarChart>
           </ResponsiveContainer>
         </div>
