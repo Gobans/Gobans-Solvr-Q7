@@ -39,11 +39,12 @@ export interface GitHubAsset {
 
 // GitHub API 원본 릴리즈 데이터
 export interface GitHubReleaseRaw {
+  repository_full_name: string // 전체 저장소 이름 (예: daangn/stackflow)
   url: string // API URL
   assets_url: string
   upload_url: string
   html_url: string // GitHub 릴리즈 페이지 URL
-  id: number // GitHub 릴리즈 ID
+  release_id: number // Release ID
   author: GitHubAuthor
   node_id: string
   tag_name: string // 태그명 (예: @stackflow/react-ui-core@1.1.0)
