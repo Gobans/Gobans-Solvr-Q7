@@ -22,7 +22,11 @@ export const createReleaseController = ({ releaseService, csvGenerator }: Releas
       request.log.info(`총 ${rawData.length}개의 릴리즈 데이터를 처리했습니다.`)
       
       // CSV 파일 생성 (저장소별 + 통합 통계)
-      const csvFiles = await csvGenerator.generateAllCsvFiles(rawData, stats)
+      const csvFiles = await csvGenerator.generateAllCsvFiles(
+        rawData, 
+        stats, 
+        (releases) => releaseService.generateStats(releases)
+      )
       
       // 저장소별 릴리즈 수 계산
       const repoStats = rawData.reduce((acc, release) => {

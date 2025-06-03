@@ -19,34 +19,6 @@ export class CsvGenerator {
   }
 
   /**
-   * 릴리즈 데이터로부터 통계를 생성합니다
-   */
-  private generateStatsFromReleases(releases: ParsedReleases): ReleaseStats {
-    const stats: ReleaseStats = {
-      yearly: {},
-      monthly: {},
-      weekly: {},
-      daily: {},
-    }
-
-    releases.forEach((release) => {
-      // 연간 통계
-      stats.yearly[release.year] = (stats.yearly[release.year] || 0) + 1
-      
-      // 월간 통계
-      stats.monthly[release.month] = (stats.monthly[release.month] || 0) + 1
-      
-      // 주간 통계
-      stats.weekly[release.week] = (stats.weekly[release.week] || 0) + 1
-      
-      // 일간 통계
-      stats.daily[release.day] = (stats.daily[release.day] || 0) + 1
-    })
-
-    return stats
-  }
-
-  /**
    * 통계 데이터를 CSV 형태로 변환합니다
    */
   private convertStatsToData(stats: ReleaseStats): Array<{
@@ -114,7 +86,10 @@ export class CsvGenerator {
   /**
    * 저장소별로 개별 통계 CSV 파일을 생성합니다
    */
-  async generateRepoWiseCsv(rawData: ParsedReleases): Promise<string[]> {
+  async generateRepoWiseCsv(
+    rawData: ParsedReleases, 
+    generateStatsCallback: (releases: ParsedReleases) => ReleaseStats
+  ): Promise<string[]> {
     // 저장소별로 데이터 그룹화
     const repoGroups = rawData.reduce((acc, release) => {
       if (!acc[release.repo]) {
@@ -131,8 +106,8 @@ export class CsvGenerator {
       const fileName = repo.replace('/', '_') + '_stats.csv'
       const filePath = path.join(this.outputDir, fileName)
       
-      // 해당 저장소의 통계 생성
-      const repoStats = this.generateStatsFromReleases(releases)
+      // 콜백을 통해 해당 저장소의 통계 생성
+      const repoStats = generateStatsCallback(releases)
       const statsData = this.convertStatsToData(repoStats)
 
       const csvWriter = createCsvWriter({
@@ -174,12 +149,16 @@ export class CsvGenerator {
   /**
    * 저장소별 CSV와 통합 통계 CSV를 생성합니다
    */
-  async generateAllCsvFiles(rawData: ParsedReleases, stats: ReleaseStats): Promise<{
+  async generateAllCsvFiles(
+    rawData: ParsedReleases, 
+    stats: ReleaseStats,
+    generateStatsCallback: (releases: ParsedReleases) => ReleaseStats
+  ): Promise<{
     repoFiles: string[]
     unifiedStatsFile: string
   }> {
     const [repoFiles, unifiedStatsFile] = await Promise.all([
-      this.generateRepoWiseCsv(rawData),
+      this.generateRepoWiseCsv(rawData, generateStatsCallback),
       this.generateUnifiedStatsCsv(stats),
     ])
 
