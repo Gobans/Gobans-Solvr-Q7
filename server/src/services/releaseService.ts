@@ -102,7 +102,7 @@ export class ReleaseService {
   }
 
   /**
-   * 파싱된 릴리즈 데이터로부터 통계를 생성합니다
+   * 파싱된 릴리즈 데이터로부터 통계를 생성합니다 (주말 제외)
    */
   generateStats(parsedReleases: ParsedReleases): ReleaseStats {
     const stats: ReleaseStats = {
@@ -113,6 +113,15 @@ export class ReleaseService {
     }
 
     parsedReleases.forEach((release: ReleaseEntry) => {
+      // 주말 여부 확인
+      const publishedDate = new Date(release.published_at)
+      const dayOfWeek = publishedDate.getDay() // 0: 일요일, 6: 토요일
+      
+      // 주말(토요일=6, 일요일=0)인 경우 통계에서 제외
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return
+      }
+
       // 연간 통계
       stats.yearly[release.year] = (stats.yearly[release.year] || 0) + 1
       
