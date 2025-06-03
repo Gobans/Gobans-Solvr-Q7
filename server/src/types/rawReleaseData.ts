@@ -255,6 +255,10 @@ export interface DashboardSummary {
     monthly: { [month: string]: number }
     quarterly: { [quarter: string]: number }
     yearly: { [year: string]: number }
+    businessHoursVsOther: {
+      businessHours: number
+      other: number
+    }
   }
   
   // 작성자 통계

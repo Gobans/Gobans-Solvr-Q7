@@ -14,14 +14,14 @@ type DailyStats = {
   [date: string]: number; // 예: { "2024-08-08": 2, "2024-08-09": 1 }
 };
 
-export type ReleaseStats = {
+export type TimeStats = {
   yearly: YearlyStats;
   monthly: MonthlyStats;
   weekly: WeeklyStats;
   daily: DailyStats;
 };
 
-export type ReleaseEntry = {
+export type TimedReleaseEntry = {
   repo: string;
   published_at: string;
   year: string;
@@ -30,9 +30,9 @@ export type ReleaseEntry = {
   day: string;         // "2024-08-08"
 };
 
-export type ParsedReleases = ReleaseEntry[];
+export type ParsedTimeEntries = TimedReleaseEntry[];
 
-export interface ReleaseEntryDto {
+export interface TimedReleaseDto {
   repo: string;
   published_at: string;
-}
+} 

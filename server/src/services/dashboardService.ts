@@ -1,74 +1,40 @@
 import { GitHubReleaseRaw, DashboardSummary } from '../types/rawReleaseData'
 import { RawDataService } from './rawDataService'
 import { CacheService } from './cacheService'
+import { TimeStatsService } from './timeStatsService'
 
 export class DashboardService {
   private rawDataService: RawDataService
   private cacheService: CacheService
+  private timeStatsService: TimeStatsService
 
   constructor() {
     this.rawDataService = new RawDataService()
     this.cacheService = new CacheService()
+    this.timeStatsService = new TimeStatsService()
   }
 
   /**
-   * Raw 데이터에서 시간별 통계를 생성합니다
+   * Raw 데이터를 TimeStatsService 형식으로 변환합니다
+   */
+  private convertRawDataToReleaseFormat(rawReleases: GitHubReleaseRaw[]) {
+    return rawReleases
+      .filter(release => release.published_at) // published_at이 있는 것만
+      .map(release => ({
+        repo: release.repository_full_name,
+        published_at: release.published_at!
+      }))
+  }
+
+  /**
+   * TimeStatsService를 활용하여 시간별 통계를 생성합니다 (평일만)
    */
   private generateTimeStats(rawReleases: GitHubReleaseRaw[]) {
-    const stats = {
-      yearly: {} as { [year: string]: number },
-      quarterly: {} as { [quarter: string]: number },
-      monthly: {} as { [month: string]: number },
-      weekly: {} as { [week: string]: number },
-      daily: {} as { [day: string]: number },
-      hourly: {} as { [hour: string]: number },
-      byDayOfWeek: {} as { [day: string]: number },
-      weekendVsWeekday: { weekend: 0, weekday: 0 },
-      businessHoursVsOther: { businessHours: 0, other: 0 }
-    }
-
-    rawReleases.forEach(release => {
-      if (!release.published_at) return
-
-      const date = new Date(release.published_at)
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1
-      const quarter = Math.ceil(month / 3)
-      const week = this.getISOWeekNumber(date)
-      const dayOfWeek = date.getDay()
-      const hour = date.getHours()
-
-      // 시간 단위별 집계
-      const yearStr = year.toString()
-      const quarterStr = `${year}-Q${quarter}`
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`
-      const weekStr = `${year}-W${String(week).padStart(2, '0')}`
-      const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
-      stats.yearly[yearStr] = (stats.yearly[yearStr] || 0) + 1
-      stats.quarterly[quarterStr] = (stats.quarterly[quarterStr] || 0) + 1
-      stats.monthly[monthStr] = (stats.monthly[monthStr] || 0) + 1
-      stats.weekly[weekStr] = (stats.weekly[weekStr] || 0) + 1
-      stats.daily[dayStr] = (stats.daily[dayStr] || 0) + 1
-      stats.hourly[hour] = (stats.hourly[hour] || 0) + 1
-      stats.byDayOfWeek[dayOfWeek] = (stats.byDayOfWeek[dayOfWeek] || 0) + 1
-
-      // 주말 vs 평일
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        stats.weekendVsWeekday.weekend++
-      } else {
-        stats.weekendVsWeekday.weekday++
-      }
-
-      // 업무시간 vs 기타
-      if (hour >= 9 && hour <= 18) {
-        stats.businessHoursVsOther.businessHours++
-      } else {
-        stats.businessHoursVsOther.other++
-      }
-    })
-
-    return stats
+    // 1. Raw 데이터를 TimeStatsService 형식으로 변환
+    const releaseEntries = this.convertRawDataToReleaseFormat(rawReleases)
+    
+    // 2. TimeStatsService의 종합 통계 기능 활용
+    return this.timeStatsService.generateComprehensiveTimeStats(releaseEntries)
   }
 
   /**
@@ -262,17 +228,6 @@ export class DashboardService {
       averageAssetsPerRelease: rawReleases.length > 0 ? Math.round(totalAssets / rawReleases.length) : 0,
       popularFileTypes
     }
-  }
-
-  /**
-   * ISO 주 번호를 계산합니다
-   */
-  private getISOWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-    const dayNum = d.getUTCDay() || 7
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
   }
 
   /**
