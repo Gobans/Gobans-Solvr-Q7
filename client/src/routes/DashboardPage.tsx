@@ -115,12 +115,22 @@ export default function DashboardPage() {
     ]
   }
 
+  const prepareBranchData = () => {
+    return data.branchStats.topBranches.map((branch, index) => ({
+      name: branch.branch,
+      releases: branch.releaseCount,
+      percentage: branch.percentage,
+      color: Object.values(COLORS)[index % Object.values(COLORS).length]
+    }))
+  }
+
   const yearlyData = prepareTimeSeriesData(data.releasesByTimeUnit.yearly)
   const monthlyData = prepareTimeSeriesData(data.releasesByTimeUnit.monthly)
   const dailyData = prepareTimeSeriesData(data.releasesByTimeUnit.daily).slice(-30) // 최근 30일
   const hourlyData = prepareHourlyData()
   const versionTypeData = prepareVersionTypeData()
   const releaseTypeData = prepareReleaseTypeData()
+  const branchData = prepareBranchData()
 
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto">
@@ -134,7 +144,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 주요 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-lg border">
           <h3 className="text-sm font-medium text-gray-500 mb-2">총 릴리즈</h3>
           <p className="text-3xl font-bold text-gray-900">{data.totalReleases.toLocaleString()}</p>
@@ -147,11 +157,6 @@ export default function DashboardPage() {
           <h3 className="text-sm font-medium text-gray-500 mb-2">업무시간 릴리즈</h3>
           <p className="text-3xl font-bold text-green-600">{data.releasesByTimeUnit.businessHoursVsOther.businessHours}</p>
           <p className="text-sm text-gray-500">전체의 {Math.round((data.releasesByTimeUnit.businessHoursVsOther.businessHours / data.totalReleases) * 100)}%</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">평균 에셋 수</h3>
-          <p className="text-3xl font-bold text-purple-600">{data.assetStats.averageAssetsPerRelease}</p>
-          <p className="text-sm text-gray-500">총 {data.assetStats.totalAssets.toLocaleString()}개</p>
         </div>
       </div>
 
@@ -201,7 +206,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 시간대별 및 파이 차트 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* 시간대별 릴리즈 */}
         <div className="bg-white p-6 rounded-xl shadow-lg border">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">시간대별 릴리즈</h2>
@@ -212,6 +217,20 @@ export default function DashboardPage() {
               <YAxis />
               <Tooltip />
               <Bar dataKey="releases" fill={COLORS.info} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 브랜치별 릴리즈 */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">브랜치별 릴리즈</h2>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={branchData.slice(0, 5)}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="releases" fill={COLORS.purple} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -262,7 +281,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 작성자 및 콘텐츠 통계 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 상위 작성자 */}
         <div className="bg-white p-6 rounded-xl shadow-lg border">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">상위 작성자</h2>
@@ -279,6 +298,28 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-lg font-semibold text-gray-900">{author.releaseCount}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 브랜치별 상세 통계 */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">브랜치별 통계</h2>
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600 mb-3">총 {data.branchStats.totalBranches}개 브랜치</div>
+            {data.branchStats.topBranches.slice(0, 8).map((branch, index) => (
+              <div key={branch.branch} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">{branch.branch}</div>
+                    <div className="text-sm text-gray-500">{branch.percentage}%</div>
+                  </div>
+                </div>
+                <div className="text-lg font-semibold text-gray-900">{branch.releaseCount}</div>
               </div>
             ))}
           </div>

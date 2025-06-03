@@ -25,14 +25,43 @@ export class DashboardController {
       const dashboardData = await this.dashboardService.generateDashboardData()
       
       console.log(`✅ 대시보드 데이터 생성 완료 - 총 ${dashboardData.totalReleases}개 릴리즈`)
+      console.log('📋 대시보드 데이터 미리보기:', {
+        totalReleases: dashboardData.totalReleases,
+        hasTimeStats: !!dashboardData.releasesByTimeUnit,
+        hasAuthorStats: !!dashboardData.authorStats,
+        keys: Object.keys(dashboardData)
+      })
       
-      return reply.code(200).send({
+      // 데이터가 비어있으면 에러로 처리
+      if (!dashboardData || Object.keys(dashboardData).length === 0) {
+        throw new Error('Generated dashboard data is empty')
+      }
+      
+      // 컨트롤러에서 직접 JSON 직렬화 테스트
+      const manualJson = JSON.stringify(dashboardData)
+      console.log('🔍 컨트롤러에서 JSON 길이:', manualJson.length)
+      console.log('🔍 컨트롤러에서 JSON 키:', Object.keys(JSON.parse(manualJson)))
+      
+      // 응답 객체 생성
+      const responseData = {
         success: true,
         data: dashboardData,
         message: `총 ${dashboardData.totalReleases}개 릴리즈의 대시보드 데이터를 생성했습니다.`
-      })
+      }
+      
+      // 응답 객체도 JSON 직렬화 테스트
+      const responseJson = JSON.stringify(responseData)
+      console.log('📤 응답 JSON 길이:', responseJson.length)
+      console.log('📤 응답 data 키 개수:', Object.keys(JSON.parse(responseJson).data).length)
+      
+      // Fastify 자동 직렬화 문제 우회: 수동으로 JSON 생성
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(responseJson)
     } catch (error) {
       console.error('❌ 대시보드 데이터 생성 실패:', error)
+      console.error('Stack trace:', error instanceof Error ? error.stack : String(error))
       return reply.code(500).send({
         success: false,
         message: error instanceof Error ? error.message : '대시보드 데이터 생성 중 오류가 발생했습니다.',
@@ -53,12 +82,17 @@ export class DashboardController {
       
       console.log(`✅ ${repository} 대시보드 생성 완료 - 총 ${dashboardData.totalReleases}개 릴리즈`)
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         data: dashboardData,
         repository,
         message: `${repository} 저장소의 총 ${dashboardData.totalReleases}개 릴리즈 대시보드를 생성했습니다.`
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error(`❌ ${request.params.repository} 대시보드 생성 실패:`, error)
       return reply.code(500).send({
@@ -80,7 +114,7 @@ export class DashboardController {
       const filePath = await this.csvGenerator.generateRawDataCsv(rawReleases)
       const fileName = filePath.split('/').pop() || 'github_releases_raw.csv'
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         data: {
           fileName,
@@ -88,7 +122,12 @@ export class DashboardController {
           filePath
         },
         message: `CSV 파일이 생성되었습니다: ${fileName}`
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ Raw 데이터 CSV 생성 실패:', error)
       return reply.code(500).send({
@@ -127,11 +166,16 @@ export class DashboardController {
         hasData: rawReleases.length > 0
       }
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         data: stats,
         message: `Raw 데이터 통계를 조회했습니다. 총 ${stats.totalReleases}개 릴리즈`
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ Raw 데이터 통계 조회 실패:', error)
       return reply.code(500).send({
@@ -165,7 +209,7 @@ export class DashboardController {
       const csvFileName = csvFilePath.split('/').pop() || 'github_releases_raw.csv'
       console.log(`✅ CSV 파일 재생성 완료: ${csvFileName}`)
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         data: {
           rawDataCount: rawDataResult.length,
@@ -179,7 +223,12 @@ export class DashboardController {
           }
         },
         message: `데이터 새로고침 완료. 총 ${rawDataResult.length}개 릴리즈 처리`
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ 데이터 새로고침 실패:', error)
       return reply.code(500).send({
@@ -197,14 +246,19 @@ export class DashboardController {
     try {
       const cacheStatus = this.dashboardService.getCacheStatus()
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         data: {
           ...cacheStatus,
           totalSizeKB: Math.round(cacheStatus.totalSize / 1024)
         },
-        message: `캐시 상태: 메모리 ${cacheStatus.memoryKeys.length}개, 디스크 ${cacheStatus.diskFiles.length}개`
-      })
+        message: `캐시 상태: 메모리 ${cacheStatus.memoryKeys.length}개`
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ 캐시 상태 조회 실패:', error)
       return reply.code(500).send({
@@ -222,10 +276,15 @@ export class DashboardController {
     try {
       this.dashboardService.invalidateCache()
       
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         message: '모든 캐시가 무효화되었습니다. 다음 요청 시 새로운 데이터를 가져옵니다.'
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ 캐시 무효화 실패:', error)
       return reply.code(500).send({
@@ -260,10 +319,15 @@ export class DashboardController {
       this.dashboardService.invalidateSpecificCache(type, repository)
       
       const target = repository ? `${type} (${repository})` : type
-      return reply.code(200).send({
+      const responseData = {
         success: true,
         message: `${target} 캐시가 무효화되었습니다.`
-      })
+      }
+      
+      return reply
+        .code(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(responseData))
     } catch (error) {
       console.error('❌ 특정 캐시 무효화 실패:', error)
       return reply.code(500).send({

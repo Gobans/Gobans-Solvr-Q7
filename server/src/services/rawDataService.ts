@@ -9,10 +9,20 @@ export class RawDataService {
 
   private async initOctokit() {
     const { Octokit } = await import('octokit')
-    this.octokit = new Octokit({
-      // GitHub Personal Access Token이 필요한 경우 환경변수에서 가져올 수 있습니다
-      // auth: process.env.GITHUB_TOKEN,
-    })
+    
+    // GitHub Personal Access Token 확인
+    const githubToken = process.env.GITHUB_TOKEN
+    
+    if (githubToken) {
+      console.log('🔑 GitHub 토큰 사용 중 - Rate Limit: 5000/hour')
+      this.octokit = new Octokit({
+        auth: githubToken,
+      })
+    } else {
+      console.warn('⚠️  GitHub 토큰이 없습니다. Rate Limit: 60/hour')
+      console.warn('💡 토큰 설정: export GITHUB_TOKEN=your_token')
+      this.octokit = new Octokit()
+    }
   }
 
   /**

@@ -1,5 +1,3 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import { GitHubReleaseRaw, DashboardSummary } from '../types/rawReleaseData'
 
 interface CacheEntry<T> {
@@ -10,50 +8,9 @@ interface CacheEntry<T> {
 
 export class CacheService {
   private memoryCache = new Map<string, CacheEntry<any>>()
-  private cacheDir: string
 
   constructor() {
-    this.cacheDir = path.join(process.cwd(), 'cache')
-    this.ensureCacheDirectory()
-    this.loadCacheFromDisk()
-  }
-
-  /**
-   * 캐시 디렉토리 생성
-   */
-  private ensureCacheDirectory() {
-    if (!fs.existsSync(this.cacheDir)) {
-      fs.mkdirSync(this.cacheDir, { recursive: true })
-    }
-  }
-
-  /**
-   * 서버 시작시 디스크에서 캐시 로드
-   */
-  private loadCacheFromDisk() {
-    try {
-      const cacheFiles = fs.readdirSync(this.cacheDir)
-      
-      for (const file of cacheFiles) {
-        if (file.endsWith('.json')) {
-          const filePath = path.join(this.cacheDir, file)
-          const cacheData = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-          const key = file.replace('.json', '')
-          
-          // TTL 확인하여 유효한 캐시만 로드
-          if (this.isValidCache(cacheData)) {
-            this.memoryCache.set(key, cacheData)
-            console.log(`📦 캐시 로드됨: ${key}`)
-          } else {
-            // 만료된 캐시 파일 삭제
-            fs.unlinkSync(filePath)
-            console.log(`🗑️ 만료된 캐시 삭제: ${key}`)
-          }
-        }
-      }
-    } catch (error) {
-      console.log('캐시 로드 중 오류 (정상적임):', error)
-    }
+    // 메모리 캐시만 사용
   }
 
   /**
@@ -81,6 +38,16 @@ export class CacheService {
     }
 
     console.log(`🎯 캐시 히트: ${key}`)
+    
+    // 캐시된 데이터 검증
+    if (cacheEntry.data) {
+      console.log(`🔍 캐시된 데이터 타입: ${typeof cacheEntry.data}`)
+      console.log(`🔍 캐시된 데이터 키: ${Object.keys(cacheEntry.data)}`)
+      console.log(`🔍 캐시된 데이터 JSON 길이: ${JSON.stringify(cacheEntry.data).length}`)
+    } else {
+      console.error(`❌ 캐시된 데이터가 비어있음: ${key}`)
+    }
+    
     return cacheEntry.data as T
   }
 
@@ -94,87 +61,47 @@ export class CacheService {
       ttl: ttlMinutes * 60 * 1000 // minutes to milliseconds
     }
 
-    // 메모리에 저장
+    // 메모리에만 저장
     this.memoryCache.set(key, cacheEntry)
-
-    // 디스크에도 저장 (백업용)
-    try {
-      const filePath = path.join(this.cacheDir, `${key}.json`)
-      fs.writeFileSync(filePath, JSON.stringify(cacheEntry, null, 2))
-      console.log(`💾 캐시 저장됨: ${key} (TTL: ${ttlMinutes}분)`)
-    } catch (error) {
-      console.error(`캐시 파일 저장 실패: ${key}`, error)
-    }
+    console.log(`💾 메모리 캐시 저장됨: ${key} (TTL: ${ttlMinutes}분)`)
   }
 
   /**
    * 캐시 삭제
    */
   delete(key: string): void {
-    // 메모리에서 삭제
+    // 메모리에서만 삭제
     this.memoryCache.delete(key)
-
-    // 디스크에서도 삭제
-    try {
-      const filePath = path.join(this.cacheDir, `${key}.json`)
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath)
-      }
-      console.log(`🗑️ 캐시 삭제됨: ${key}`)
-    } catch (error) {
-      console.error(`캐시 파일 삭제 실패: ${key}`, error)
-    }
+    console.log(`🗑️ 메모리 캐시 삭제됨: ${key}`)
   }
 
   /**
    * 모든 캐시 삭제
    */
   clear(): void {
-    // 메모리 캐시 클리어
+    // 메모리 캐시만 클리어
     this.memoryCache.clear()
-
-    // 디스크 캐시 클리어
-    try {
-      const files = fs.readdirSync(this.cacheDir)
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          fs.unlinkSync(path.join(this.cacheDir, file))
-        }
-      }
-      console.log('🧹 모든 캐시 삭제됨')
-    } catch (error) {
-      console.error('캐시 클리어 실패:', error)
-    }
+    console.log('🧹 모든 메모리 캐시 삭제됨')
   }
 
   /**
    * 캐시 상태 조회
    */
-  getStatus(): { memoryKeys: string[], diskFiles: string[], totalSize: number } {
+  getStatus(): { memoryKeys: string[], totalSize: number } {
     const memoryKeys = Array.from(this.memoryCache.keys())
     
-    let diskFiles: string[] = []
+    // 메모리 캐시 크기 추정 (JSON 문자열 길이 기준)
     let totalSize = 0
-    
-    try {
-      diskFiles = fs.readdirSync(this.cacheDir)
-        .filter(file => file.endsWith('.json'))
-        .map(file => file.replace('.json', ''))
-      
-      // 총 캐시 크기 계산
-      for (const file of fs.readdirSync(this.cacheDir)) {
-        if (file.endsWith('.json')) {
-          const stat = fs.statSync(path.join(this.cacheDir, file))
-          totalSize += stat.size
-        }
+    for (const [key, entry] of this.memoryCache.entries()) {
+      try {
+        totalSize += JSON.stringify(entry).length
+      } catch (error) {
+        console.warn(`캐시 크기 계산 실패: ${key}`)
       }
-    } catch (error) {
-      console.error('캐시 상태 조회 실패:', error)
     }
 
     return {
       memoryKeys,
-      diskFiles,
       totalSize
     }
   }

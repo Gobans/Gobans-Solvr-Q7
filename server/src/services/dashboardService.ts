@@ -189,6 +189,35 @@ export class DashboardService {
   }
 
   /**
+   * Raw 데이터에서 브랜치별 통계를 생성합니다
+   */
+  private generateBranchStats(rawReleases: GitHubReleaseRaw[]) {
+    const branchMap = {} as { [branch: string]: number }
+    
+    rawReleases.forEach(release => {
+      const branch = release.target_commitish || 'unknown'
+      branchMap[branch] = (branchMap[branch] || 0) + 1
+    })
+
+    // 브랜치별 릴리즈 수를 배열로 변환하고 정렬
+    const branchEntries = Object.entries(branchMap)
+      .sort(([, a], [, b]) => b - a) // 릴리즈 수 내림차순 정렬
+
+    const totalReleases = rawReleases.length
+    const topBranches = branchEntries.slice(0, 10).map(([branch, count]) => ({
+      branch,
+      releaseCount: count,
+      percentage: Math.round((count / totalReleases) * 100)
+    }))
+
+    return {
+      totalBranches: branchEntries.length,
+      topBranches,
+      branchDistribution: branchMap
+    }
+  }
+
+  /**
    * Assets 관련 통계를 생성합니다
    */
   private generateAssetStats(rawReleases: GitHubReleaseRaw[]) {
@@ -269,54 +298,102 @@ export class DashboardService {
     // 2. 캐시 미스 시 생성
     console.log('🔄 대시보드 데이터 새로 생성 중...')
     
-    // Raw 데이터 수집 (이것도 캐시됨)
-    const rawReleases = await this.getCachedRawReleaseData()
+    try {
+      // Raw 데이터 수집 (이것도 캐시됨)
+      const rawReleases = await this.getCachedRawReleaseData()
+      console.log(`📊 Raw 데이터 수집 완료: ${rawReleases.length}개`)
 
-    if (rawReleases.length === 0) {
-      throw new Error('No release data found')
-    }
+      if (rawReleases.length === 0) {
+        throw new Error('No release data found')
+      }
 
-    // 각종 통계 생성
-    const timeStats = this.generateTimeStats(rawReleases)
-    const authorStats = this.generateAuthorStats(rawReleases)
-    const versionStats = this.generateVersionStats(rawReleases)
-    const repositoryStats = this.generateRepositoryStats(rawReleases)
-    const assetStats = this.generateAssetStats(rawReleases)
+      // 각종 통계 생성
+      console.log('⏰ 시간 통계 생성 중...')
+      const timeStats = this.generateTimeStats(rawReleases)
+      console.log('👤 작성자 통계 생성 중...')
+      const authorStats = this.generateAuthorStats(rawReleases)
+      console.log('📦 버전 통계 생성 중...')
+      const versionStats = this.generateVersionStats(rawReleases)
+      console.log('🏢 저장소 통계 생성 중...')
+      const repositoryStats = this.generateRepositoryStats(rawReleases)
+      console.log('📎 에셋 통계 생성 중...')
+      const assetStats = this.generateAssetStats(rawReleases)
+      console.log('🌿 브랜치 통계 생성 중...')
+      const branchStats = this.generateBranchStats(rawReleases)
 
-    // 날짜 범위 계산
-    const publishedDates = rawReleases
-      .filter(r => r.published_at)
-      .map(r => r.published_at!)
-      .sort()
+      // 날짜 범위 계산
+      const publishedDates = rawReleases
+        .filter(r => r.published_at)
+        .map(r => r.published_at!)
+        .sort()
 
-    const dashboardData: DashboardSummary = {
-      totalReleases: rawReleases.length,
-      dateRange: {
-        earliest: publishedDates[0] || '',
-        latest: publishedDates[publishedDates.length - 1] || ''
-      },
-      releasesByType: versionStats.releasesByType,
-      versionTypeDistribution: versionStats.versionTypeDistribution,
-      releasesByTimeUnit: timeStats,
-      authorStats,
-      contentStats: {
-        averageReleaseNoteLength: rawReleases.reduce((sum, r) => sum + (r.body?.length || 0), 0) / rawReleases.length,
-        releaseNoteCoverage: rawReleases.filter(r => r.body && r.body.trim().length > 0).length / rawReleases.length,
-        changeTypeDistribution: {
-          breaking: 0, // 추후 키워드 분석으로 확장 가능
-          features: 0,
-          bugfixes: 0,
-          performance: 0,
-          security: 0
+      const dashboardData: DashboardSummary = {
+        totalReleases: rawReleases.length,
+        dateRange: {
+          earliest: publishedDates[0] || '',
+          latest: publishedDates[publishedDates.length - 1] || ''
+        },
+        releasesByType: versionStats.releasesByType,
+        versionTypeDistribution: versionStats.versionTypeDistribution,
+        releasesByTimeUnit: timeStats,
+        authorStats,
+        contentStats: {
+          averageReleaseNoteLength: rawReleases.reduce((sum, r) => sum + (r.body?.length || 0), 0) / rawReleases.length,
+          releaseNoteCoverage: rawReleases.filter(r => r.body && r.body.trim().length > 0).length / rawReleases.length,
+          changeTypeDistribution: {
+            breaking: 0, // 추후 키워드 분석으로 확장 가능
+            features: 0,
+            bugfixes: 0,
+            performance: 0,
+            security: 0
+          }
+        },
+        assetStats,
+        branchStats
+      }
+
+      console.log(`✅ 대시보드 데이터 생성 완료 - 총 ${dashboardData.totalReleases}개 릴리즈`)
+      console.log('📋 대시보드 데이터 미리보기:', {
+        totalReleases: dashboardData.totalReleases,
+        hasTimeStats: !!dashboardData.releasesByTimeUnit,
+        hasAuthorStats: !!dashboardData.authorStats,
+        keys: Object.keys(dashboardData)
+      })
+
+      // 개별 필드별 직렬화 테스트
+      console.log('🔍 개별 필드 직렬화 테스트:')
+      for (const [key, value] of Object.entries(dashboardData)) {
+        try {
+          const serialized = JSON.stringify(value)
+          console.log(`  ✅ ${key}: ${serialized.length}자`)
+        } catch (error) {
+          console.error(`  ❌ ${key}: 직렬화 실패`, error)
         }
-      },
-      assetStats
+      }
+
+      // 3. 대시보드 캐시에 저장 (15분 TTL - Raw 데이터보다 짧게)
+      console.log('💾 캐시에 저장하기 전 데이터 키:', Object.keys(dashboardData))
+      
+      // 캐시 저장 전 직렬화 테스트
+      const preSerializeTest = JSON.stringify(dashboardData)
+      console.log('💾 캐시 저장 전 JSON 길이:', preSerializeTest.length)
+      
+      this.cacheService.set(cacheKey, dashboardData, 15)
+      
+      // 캐시에서 바로 읽어보기
+      const cachedResult = this.cacheService.get<DashboardSummary>(cacheKey)
+      if (cachedResult) {
+        console.log('🔍 캐시된 데이터 키:', Object.keys(cachedResult))
+        console.log('🔍 캐시된 데이터 JSON 길이:', JSON.stringify(cachedResult).length)
+      } else {
+        console.error('❌ 캐시 저장 실패 - 캐시에서 데이터를 읽을 수 없음')
+      }
+
+      return dashboardData
+    } catch (error) {
+      console.error('❌ 대시보드 데이터 생성 중 오류:', error)
+      throw error
     }
-
-    // 3. 대시보드 캐시에 저장 (15분 TTL - Raw 데이터보다 짧게)
-    this.cacheService.set(cacheKey, dashboardData, 15)
-
-    return dashboardData
   }
 
   /**
@@ -347,6 +424,7 @@ export class DashboardService {
     const authorStats = this.generateAuthorStats(filteredReleases)
     const versionStats = this.generateVersionStats(filteredReleases)
     const assetStats = this.generateAssetStats(filteredReleases)
+    const branchStats = this.generateBranchStats(filteredReleases)
 
     const publishedDates = filteredReleases
       .filter(r => r.published_at)
@@ -374,7 +452,8 @@ export class DashboardService {
           security: 0
         }
       },
-      assetStats
+      assetStats,
+      branchStats
     }
 
     // 3. 저장소별 대시보드 캐시에 저장 (15분 TTL)

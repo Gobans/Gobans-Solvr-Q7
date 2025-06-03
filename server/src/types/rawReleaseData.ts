@@ -299,4 +299,15 @@ export interface DashboardSummary {
       totalDownloads: number
     }>
   }
+  
+  // 브랜치 통계
+  branchStats: {
+    totalBranches: number
+    topBranches: Array<{
+      branch: string
+      releaseCount: number
+      percentage: number
+    }>
+    branchDistribution: { [branch: string]: number }
+  }
 } 
