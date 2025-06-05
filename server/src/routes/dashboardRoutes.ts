@@ -48,31 +48,6 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     }
   }, controller.getRepositoryDashboard.bind(controller))
 
-  // 📄 Raw 데이터 CSV 생성 API
-  fastify.post('/api/dashboard/generate-csv', {
-    schema: {
-      description: 'GitHub 릴리즈 Raw 데이터 CSV 파일 생성',
-      tags: ['Dashboard', 'Raw Data'],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                fileName: { type: 'string' },
-                totalRecords: { type: 'number' },
-                filePath: { type: 'string' }
-              }
-            },
-            message: { type: 'string' }
-          }
-        }
-      }
-    }
-  }, controller.generateRawDataCsv.bind(controller))
-
   // 📊 Raw 데이터 기본 통계 API
   fastify.get('/api/dashboard/raw-stats', {
     schema: {

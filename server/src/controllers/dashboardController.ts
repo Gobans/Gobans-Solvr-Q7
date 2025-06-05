@@ -1,17 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { DashboardService } from '../services/dashboardService'
 import { RawDataService } from '../services/rawDataService'
-import { RawDataCsvGenerator } from '../utils/rawDataCsvGenerator'
 
 export class DashboardController {
   private dashboardService: DashboardService
   private rawDataService: RawDataService
-  private csvGenerator: RawDataCsvGenerator
 
   constructor() {
     this.dashboardService = new DashboardService()
     this.rawDataService = new RawDataService()
-    this.csvGenerator = new RawDataCsvGenerator()
   }
 
   /**
@@ -104,41 +101,6 @@ export class DashboardController {
   }
 
   /**
-   * 📄 Raw 데이터 조회 (CSV 생성용)
-   */
-  async generateRawDataCsv(request: FastifyRequest, reply: FastifyReply) {
-    try {
-      console.log('📄 Raw 데이터 CSV 생성 시작...')
-      
-      const rawReleases = await this.rawDataService.generateRawReleaseData()
-      const filePath = await this.csvGenerator.generateRawDataCsv(rawReleases)
-      const fileName = filePath.split('/').pop() || 'github_releases_raw.csv'
-      
-      const responseData = {
-        success: true,
-        data: {
-          fileName,
-          totalRecords: rawReleases.length,
-          filePath
-        },
-        message: `CSV 파일이 생성되었습니다: ${fileName}`
-      }
-      
-      return reply
-        .code(200)
-        .header('Content-Type', 'application/json')
-        .send(JSON.stringify(responseData))
-    } catch (error) {
-      console.error('❌ Raw 데이터 CSV 생성 실패:', error)
-      return reply.code(500).send({
-        success: false,
-        message: error instanceof Error ? error.message : 'CSV 생성 중 오류가 발생했습니다.',
-        error: error instanceof Error ? error.stack : String(error)
-      })
-    }
-  }
-
-  /**
    * 📊 Raw 데이터 기본 통계 조회
    */
   async getRawDataStats(request: FastifyRequest, reply: FastifyReply) {
@@ -204,10 +166,6 @@ export class DashboardController {
       const dashboardData = await this.dashboardService.generateDashboardData()
       console.log(`✅ 대시보드 통계 생성 완료`)
       
-      // 3. CSV 파일도 재생성
-      const csvFilePath = await this.csvGenerator.generateRawDataCsv(rawDataResult)
-      const csvFileName = csvFilePath.split('/').pop() || 'github_releases_raw.csv'
-      console.log(`✅ CSV 파일 재생성 완료: ${csvFileName}`)
       
       const responseData = {
         success: true,
@@ -217,10 +175,6 @@ export class DashboardController {
             totalReleases: dashboardData.totalReleases,
             dateRange: dashboardData.dateRange
           },
-          csvFile: {
-            fileName: csvFileName,
-            totalRecords: rawDataResult.length
-          }
         },
         message: `데이터 새로고침 완료. 총 ${rawDataResult.length}개 릴리즈 처리`
       }
